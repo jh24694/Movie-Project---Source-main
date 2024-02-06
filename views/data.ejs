@@ -1,0 +1,202 @@
+<!-- data.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Movie Data</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+  <style>
+    /* Custom styles for the flexbox table */
+    .flex-table {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .flex-row {
+      display: flex;
+      flex-basis: 25%; /* Set to 25% to display four across */
+      margin-bottom: 10px;
+    }
+
+    .flex-cell {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+
+    .movie-details {
+      display: flex;
+      align-items: center;
+    }
+
+    .movie-details img {
+      margin-right: 20px; /* Adjust as needed */
+      max-width: 100px; /* Adjust as needed */
+      max-height: 100px; /* Adjust as needed */
+    }
+
+    .times-watched {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+ 
+ <div class="container mt-3">
+    <button class="btn btn-primary sort-btn" onclick="sortMoviesByTimesWatched()">Sort by Times Watched</button>
+    <button class="btn btn-primary sort-btn" onclick="sortMoviesByYear()">Sort by Year (Newest to Oldest)</button>
+    <a href="/" class="btn btn-primary">Back</a>
+
+  </div>
+  
+  <div class="container mt-3">
+    <% if (totalMovies !== undefined && totalTimesWatched !== undefined) { %>
+      <p>You've watched a total of <%= totalMovies %> movies, <%= totalTimesWatched %> times!</p>
+    <% } else { %>
+      <p>Loading...</p>
+    <% } %>
+  </div>
+
+  <!-- Header and Search Input -->
+  <div class="container mt-3">
+    <h1 class="text-center">Movie Data</h1>
+    <div class="form-group">
+      <input type="text" class="form-control" id="searchInput" placeholder="Search movies">
+    </div>
+  </div>
+
+  <!-- Flexbox Table -->
+  <div class="container flex-table" id="movieContainer">
+    <!-- Table Rows (Loop through your Movie data here) -->
+    <% movieData.forEach(movie => { %>
+      <div class="flex-row">
+        <div class="flex-cell">
+          <div class="movie-details">
+            <img src="<%= movie.photo %>" alt="<%= movie.name %>" class="img-fluid">
+            <div>
+              <p><strong><%= movie.name %></strong></p>
+              <p><%= movie.year %></p>
+              <!-- Add Watched button with onclick event -->
+              <button class="btn btn-primary" onclick="watchMovie('<%= movie._id %>')">Watched</button>
+              <!-- Display timesWatched value -->
+              <p class="times-watched">Times Watched: <%= movie.timesWatched %></p>
+              <button class="btn btn-danger" onclick="deleteMovie('<%= movie._id %>')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+  <!-- Bootstrap JS (and Popper.js) -->
+  <script src="node_modules/popper.js/dist/umd/popper.min.js"></script>
+  <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+  <!-- Custom JavaScript for movie search -->
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const movieContainer = document.getElementById('movieContainer');
+    const movies = Array.from(document.querySelectorAll('.flex-row'));
+
+    searchInput.addEventListener('input', function () {
+      const searchTerm = searchInput.value.toLowerCase();
+
+      movies.forEach(movie => {
+        const movieDetails = movie.querySelector('.movie-details');
+        const movieName = movieDetails.querySelector('strong').innerText.toLowerCase();
+        const movieYear = movieDetails.querySelector('p:nth-child(2)').innerText.toLowerCase();
+
+        if (movieName.includes(searchTerm) || movieYear.includes(searchTerm)) {
+          movie.style.display = 'flex';
+        } else {
+          movie.style.display = 'none';
+        }
+      });
+    });
+
+    // Function to mark movie as watched
+    function watchMovie(movieId) {
+      // Make an AJAX request to mark movie as watched
+      fetch('/markAsWatched', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ movieId })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Error marking movie as watched');
+        }
+        // Optionally, handle successful response (e.g., show a success message)
+        console.log('Movie marked as watched');
+        // Reload the page to reflect the updated timesWatched values
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error(error);
+        // Handle error (e.g., show an error message)
+      });
+    }
+      
+      function sortMoviesByTimesWatched() {
+      movies.sort((a, b) => {
+        const timesWatchedA = parseInt(a.querySelector('.times-watched').innerText.split(': ')[1]);
+        const timesWatchedB = parseInt(b.querySelector('.times-watched').innerText.split(': ')[1]);
+        return timesWatchedB - timesWatchedA;
+      });
+
+      // Reorder movie elements in the container
+      movieContainer.innerHTML = '';
+      movies.forEach(movie => {
+        movieContainer.appendChild(movie);
+      });
+    }
+
+    // Function to sort movies by year (newest to oldest)
+    function sortMoviesByYear() {
+      movies.sort((a, b) => {
+        const yearA = parseInt(a.querySelector('p:nth-child(2)').innerText);
+        const yearB = parseInt(b.querySelector('p:nth-child(2)').innerText);
+        return yearB - yearA;
+      });
+
+      // Reorder movie elements in the container
+      movieContainer.innerHTML = '';
+      movies.forEach(movie => {
+        movieContainer.appendChild(movie);
+      });
+    }
+  </script>
+  
+  <script>
+    // Function to delete movie
+    function deleteMovie(movieId) {
+      // Make an AJAX request to delete the movie
+      fetch('/deleteMovie', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ movieId })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Error deleting movie');
+        }
+        // Optionally, handle successful response (e.g., show a success message)
+        console.log('Movie deleted');
+        // Reload the page to reflect the updated movie list
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error(error);
+        // Handle error (e.g., show an error message)
+      });
+    }
+  </script>
+</body>
+</html>
